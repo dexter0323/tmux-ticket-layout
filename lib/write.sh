@@ -36,16 +36,18 @@ write::layout_sh() {
   # Track whether we are inside a {{#if VAR}}...{{/if}} block that is false.
   BEGIN { skip = 0; skip_depth = 0 }
 
-  # Handle {{#if VAR}} — check if the corresponding awk variable is non-empty
-  /\{\{#if [A-Z_]+\}\}/ {
-    match($0, /\{\{#if ([A-Z_]+)\}\}/, m)
-    varname = m[1]
+  # Handle {{#if VAR}} — extract varname without capture groups (POSIX awk compat)
+  /\{\{#if [A-Z0-9_]+\}\}/ {
+    line = $0
+    sub(/.*\{\{#if /, "", line)
+    sub(/\}\}.*/, "", line)
+    varname = line
     val = ""
     if      (varname == "PANE1_SHELL_HELPERS") val = PANE1_SHELL_HELPERS
     else if (varname == "PANE2_CMD")           val = PANE2_CMD
     else if (varname == "PANE3_DIR")           val = PANE3_DIR
     else if (varname == "PANE4_DIR")           val = PANE4_DIR
-    if (val == "") { skip = 1; skip_depth++ }
+    if (val == "") { skip++; skip_depth++ }
     next
   }
 
@@ -54,7 +56,7 @@ write::layout_sh() {
     next
   }
 
-  skip { next }
+  skip > 0 { next }
 
   {
     gsub(/\{\{PROJECT_ROOT\}\}/, PROJECT_ROOT)
